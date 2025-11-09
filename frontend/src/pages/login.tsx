@@ -28,7 +28,7 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(38, 116, 199, 0.56)' // customize this to match your brand
+        backgroundColor: 'rgba(208, 10, 36, 0.56)' // customize this to match your brand
       }}
     >
       <Paper elevation={3} sx={{ p: 4, width: 360 }}>

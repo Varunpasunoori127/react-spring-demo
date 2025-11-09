@@ -19,17 +19,21 @@ export default function Dashboard() {
     type: 'include',
     ids: new Set(),
   })
-
   const selectedId = selection.ids.size > 0 ? Array.from(selection.ids)[0] : undefined
+
+  // Controlled form state
+  const [formValues, setFormValues] = useState<Omit<Product, 'id'>>({
+    name: '',
+    price: 0,
+    stock: 0,
+  })
 
   const fetchData = async () => {
     setLoading(true)
     const { data } = await api.get<Product[]>('/products')
-    console.log('Fetched products:', data)
     setRows(data)
     setLoading(false)
   }
-
   useEffect(() => { fetchData() }, [])
 
   const columns: GridColDef<Product>[] = [
@@ -47,7 +51,8 @@ export default function Dashboard() {
   ]
 
   const onAdd = () => {
-    setEditing({ id: 0, name: '', price: 0, stock: 0 })
+    setEditing(null)
+    setFormValues({ name: '', price: 0, stock: 0 })
     setOpen(true)
   }
 
@@ -56,6 +61,7 @@ export default function Dashboard() {
     const item = rows.find(r => r.id === selectedId)
     if (item) {
       setEditing(item)
+      setFormValues({ name: item.name, price: item.price, stock: item.stock })
       setOpen(true)
     }
   }
@@ -66,46 +72,27 @@ export default function Dashboard() {
     fetchData()
   }
 
-  const onSave = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const f = new FormData(e.currentTarget)
-
-    console.log('Form values:', {
-      name: f.get('name'),
-      price: f.get('price'),
-      stock: f.get('stock'),
-    })
-
-    const payload: Omit<Product, 'id'> = {
-      name: String(f.get('name') ?? ''),
-      price: Number(f.get('price') ?? 0),
-      stock: Number(f.get('stock') ?? 0),
-    }
-
-    console.log('Payload to save:', payload)
-
+  const onSave = async () => {
+    const payload = { ...formValues }
     if (editing && editing.id) {
       await api.put(`/products/${editing.id}`, payload)
     } else {
       await api.post('/products', payload)
     }
-
     setOpen(false)
     setEditing(null)
     fetchData()
   }
 
   return (
-    <Box
-      sx={{
-        height: '100vh',
-        width: '100vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f0f4f8'
-      }}
-    >
+    <Box sx={{
+      height: '100vh',
+      width: '100vw',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(230, 4, 140, 0)'
+    }}>
       <Paper elevation={4} sx={{ p: 4, width: '90%', maxWidth: 1000 }}>
         <Stack gap={2}>
           <Typography variant="h5" textAlign="center">Dashboard</Typography>
@@ -127,18 +114,34 @@ export default function Dashboard() {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth>
-        <DialogTitle>{editing && editing.id ? 'Edit Product' : 'Add Product'}</DialogTitle>
-        <Box component="form" onSubmit={onSave}>
-          <DialogContent sx={{ display: 'grid', gap: 2 }}>
-            <TextField label="Name" name="name" defaultValue={editing?.name ?? ''} required />
-            <TextField label="Price" name="price" type="number" inputProps={{step:"any"}} defaultValue={editing?.price ?? 100} required />
-            <TextField label="Stock" name="stock" type="number" defaultValue={editing?.stock ?? 0} required />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="contained">Save</Button>
-          </DialogActions>
-        </Box>
+        <DialogTitle>{editing ? 'Edit Product' : 'Add Product'}</DialogTitle>
+        <DialogContent sx={{ display: 'grid', gap: 2 }}>
+          <TextField
+            label="Name"
+            value={formValues.name}
+            onChange={(e) => setFormValues({ ...formValues, name: e.target.value })}
+            required
+          />
+          <TextField
+            label="Price"
+            type="number"
+            inputProps={{ step: "any" }}
+            value={formValues.price}
+            onChange={(e) => setFormValues({ ...formValues, price: Number(e.target.value) })}
+            required
+          />
+          <TextField
+            label="Stock"
+            type="number"
+            value={formValues.stock}
+            onChange={(e) => setFormValues({ ...formValues, stock: Number(e.target.value) })}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={onSave} variant="contained">Save</Button>
+        </DialogActions>
       </Dialog>
     </Box>
   )
