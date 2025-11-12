@@ -2,8 +2,17 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { setAuth, api } from '../api'
 import {
-  Box, Button, TextField, Typography, Paper, Link
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Paper,
+  Link,
+  
+  InputAdornment
 } from '@mui/material'
+import PersonIcon from '@mui/icons-material/Person'
+import LockIcon from '@mui/icons-material/Lock'
 
 export default function Login() {
   const [username, setUsername] = useState('demo')
@@ -44,25 +53,45 @@ export default function Login() {
         }}
       >
         <Typography variant="h5" mb={2} textAlign="center">
-          Login
+          Product Dashboard
         </Typography>
         <Box component="form" onSubmit={handleSubmit} display="grid" gap={2}>
           <TextField
             label="Username"
+            placeholder="Enter your username"
             value={username}
             onChange={e => setUsername(e.target.value)}
             fullWidth
             autoComplete="username"
             required
+            variant="outlined"
+            InputLabelProps={{ shrink: true }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PersonIcon />
+                </InputAdornment>
+              )
+            }}
           />
           <TextField
             label="Password"
+            placeholder="Enter your password"
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             fullWidth
             autoComplete="current-password"
             required
+            variant="outlined"
+            InputLabelProps={{ shrink: true }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LockIcon />
+                </InputAdornment>
+              )
+            }}
           />
           {error && (
             <Typography color="error" fontSize={14}>
@@ -70,11 +99,12 @@ export default function Login() {
             </Typography>
           )}
           <Button type="submit" variant="contained" fullWidth>
-            Login
+            LOGIN
           </Button>
-          <Link href="#" variant="body2" textAlign="center">
-            Forgot password?
-          </Link>
+          <Link href="#" variant="body2" textAlign="center"> Forgot password? </Link>
+          <Typography variant="caption" textAlign="center" color="text.secondary">
+            © 2025 Varun Pasunoori – MSc Computing
+          </Typography>
         </Box>
       </Paper>
     </Box>

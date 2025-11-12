@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import {
+  AppBar, Toolbar, Avatar, Snackbar, Alert,
   Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   TextField, Typography, Paper, Stack
 } from '@mui/material';
+import LogoutIcon from '@mui/icons-material/Logout';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRowId, GridRowSelectionModel } from '@mui/x-data-grid';
 
 type Product = { id: number; name: string; price: number; stock: number };
-
-// Shape we may receive from the API (handles alt keys / cases)
 type ApiProduct = {
   id?: number | string; ID?: number | string;
   name?: string; NAME?: string;
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
+  const [snack, setSnack] = useState<{ open: boolean; msg: string }>({ open: false, msg: '' });
 
   // v6 object selection model
   const [selection, setSelection] = useState<GridRowSelectionModel>({
@@ -41,19 +43,17 @@ export default function Dashboard() {
 
   const [formValues, setFormValues] = useState({ name: '', price: '', stock: '' });
 
-  // ---- FETCH with normalization (no `any`)
+  // ---- FETCH
   const fetchData = async () => {
     try {
       setLoading(true);
       const { data } = await api.get<ApiProduct[]>('/products');
-
       const norm = (r: ApiProduct): Product => ({
         id: Number(r.id ?? r.ID),
         name: String(r.name ?? r.NAME ?? ''),
         price: Number(r.price ?? r.PRICE ?? r.amount ?? 0),
         stock: Number(r.stock ?? r.STOCK ?? 0),
       });
-
       const rowsNorm: Product[] = Array.isArray(data) ? data.map(norm) : [];
       setRows(rowsNorm);
     } finally {
@@ -62,7 +62,7 @@ export default function Dashboard() {
   };
   useEffect(() => { fetchData(); }, []);
 
-  // ---- Columns (render price explicitly)
+  // ---- Columns
   const columns: GridColDef<Product>[] = [
     { field: 'id', headerName: 'ID', width: 80 },
     { field: 'name', headerName: 'Name', flex: 1 },
@@ -79,6 +79,7 @@ export default function Dashboard() {
     { field: 'stock', headerName: 'Stock', width: 100, type: 'number' },
   ];
 
+  // ---- Actions
   const onAdd = () => {
     setEditing(null);
     setFormValues({ name: '', price: '', stock: '' });
@@ -103,6 +104,7 @@ export default function Dashboard() {
     if (selectedId == null) return;
     await api.delete(`/products/${selectedId}`);
     await fetchData();
+    setSnack({ open: true, msg: 'Product deleted successfully!' });
   };
 
   const onSave = async () => {
@@ -111,8 +113,8 @@ export default function Dashboard() {
 
     const nPrice = Number(price);
     const nStock = Number(stock);
-    if (!Number.isFinite(nPrice) || nPrice < 0) return alert('Price must be a valid number ≥ 0');
-    if (!Number.isFinite(nStock) || nStock < 0) return alert('Stock must be a valid number ≥ 0');
+    if (!Number.isFinite(nPrice) || nPrice < 0) return alert('Price must be ≥ 0');
+    if (!Number.isFinite(nStock) || nStock < 0) return alert('Stock must be ≥ 0');
 
     const payload = { name: name.trim(), price: nPrice, stock: nStock };
 
@@ -120,15 +122,17 @@ export default function Dashboard() {
       setSaving(true);
       if (editing?.id) {
         await api.put(`/products/${editing.id}`, payload);
+        setSnack({ open: true, msg: 'Product updated successfully!' });
       } else {
         await api.post('/products', payload);
+        setSnack({ open: true, msg: 'Product added successfully!' });
       }
       await fetchData();
       setOpen(false);
       setEditing(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e: unknown) {
-      const status = (e as { response?: { status?: number } })?.response?.status;
-      alert(status ? `Failed (HTTP ${status})` : 'Failed to save.');
+      alert('Failed to save changes. Check network or backend.');
     } finally {
       setSaving(false);
     }
@@ -136,9 +140,46 @@ export default function Dashboard() {
 
   const handleSelectionChange = (model: GridRowSelectionModel) => setSelection(model);
 
+  // ---- Logout
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = '/';
+  };
+
   return (
-    <Box sx={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1976D2' }}>
-      <Paper elevation={4} sx={{ p: 4, width: '90%', maxWidth: 1000, borderRadius: 2, backgroundColor: '#fff' }}>
+    <Box sx={{
+      height: '100vh',
+      width: '100vw',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      background: 'linear-gradient(135deg, #1976D2 0%, #42A5F5 100%)'
+    }}>
+      {/* ---- Top AppBar ---- */}
+      <AppBar position="fixed" sx={{ backgroundColor: '#1565C0' }}>
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Stack direction="row" alignItems="center" gap={1}>
+            <DashboardIcon />
+            <Typography variant="h6" fontWeight="bold">
+              Product Dashboard
+            </Typography>
+          </Stack>
+
+          <Stack direction="row" alignItems="center" gap={2}>
+            <Avatar sx={{ bgcolor: '#fff', color: '#1565C0', width: 32, height: 32 }}>D</Avatar>
+            <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
+              Logout
+            </Button>
+          </Stack>
+        </Toolbar>
+      </AppBar>
+
+      {/* ---- Main Content ---- */}
+      <Paper elevation={4} sx={{
+        mt: 10, p: 4, width: '90%', maxWidth: 1000, borderRadius: 2,
+        backgroundColor: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+      }}>
         <Stack gap={2}>
           <Typography variant="h5" textAlign="center">Dashboard</Typography>
 
@@ -159,11 +200,16 @@ export default function Dashboard() {
               disableRowSelectionOnClick={false}
               getRowId={(row) => row.id}
               onRowDoubleClick={() => onEdit()}
+              sx={{
+                '& .MuiDataGrid-row:hover': { backgroundColor: '#E3F2FD' },
+                border: 'none'
+              }}
             />
           </div>
         </Stack>
       </Paper>
 
+      {/* ---- Dialog ---- */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth aria-labelledby="product-dialog-title">
         <DialogTitle id="product-dialog-title">{editing ? 'Edit Product' : 'Add Product'}</DialogTitle>
         <Box component="div">
@@ -199,6 +245,23 @@ export default function Dashboard() {
           </DialogActions>
         </Box>
       </Dialog>
+
+      {/* ---- Snackbar ---- */}
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={() => setSnack({ open: false, msg: '' })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" sx={{ width: '100%' }}>
+          {snack.msg}
+        </Alert>
+      </Snackbar>
+
+      {/* ---- Footer ---- */}
+      <Typography variant="caption" sx={{ mt: 2, color: '#f0f0f0' }}>
+        © {new Date().getFullYear()} Varun Pasunoori — MSc Computing
+      </Typography>
     </Box>
   );
 }
